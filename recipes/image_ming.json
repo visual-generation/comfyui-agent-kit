@@ -1,0 +1,173 @@
+{
+ "1": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "ming_image_0.1_design_int8_convrot.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "2": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "ming_image_vae_bf16.safetensors"
+  }
+ },
+ "3": {
+  "class_type": "KSamplerSelect",
+  "inputs": {
+   "sampler_name": "euler"
+  }
+ },
+ "4": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  }
+ },
+ "5": {
+  "class_type": "RandomNoise",
+  "inputs": {
+   "noise_seed": 42
+  }
+ },
+ "6": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "",
+   "clip": [
+    "4",
+    0
+   ]
+  }
+ },
+ "7": {
+  "class_type": "PrimitiveInt",
+  "inputs": {
+   "value": 1216
+  }
+ },
+ "8": {
+  "class_type": "PrimitiveInt",
+  "inputs": {
+   "value": 832
+  }
+ },
+ "9": {
+  "class_type": "EmptyLatentImage",
+  "inputs": {
+   "width": [
+    "7",
+    0
+   ],
+   "height": [
+    "8",
+    0
+   ],
+   "batch_size": 1
+  }
+ },
+ "10": {
+  "class_type": "ModelAttentionBackend",
+  "inputs": {
+   "attention": "comfy kitchen attention",
+   "model": [
+    "1",
+    0
+   ]
+  }
+ },
+ "11": {
+  "class_type": "ModelSamplingFlux",
+  "inputs": {
+   "max_shift": 1.15,
+   "base_shift": 0.5,
+   "width": [
+    "7",
+    0
+   ],
+   "height": [
+    "8",
+    0
+   ],
+   "model": [
+    "10",
+    0
+   ]
+  }
+ },
+ "12": {
+  "class_type": "BasicScheduler",
+  "inputs": {
+   "scheduler": "simple",
+   "steps": 12,
+   "denoise": 1,
+   "model": [
+    "11",
+    0
+   ]
+  }
+ },
+ "13": {
+  "class_type": "BasicGuider",
+  "inputs": {
+   "model": [
+    "11",
+    0
+   ],
+   "conditioning": [
+    "6",
+    0
+   ]
+  }
+ },
+ "14": {
+  "class_type": "SamplerCustomAdvanced",
+  "inputs": {
+   "noise": [
+    "5",
+    0
+   ],
+   "guider": [
+    "13",
+    0
+   ],
+   "sampler": [
+    "3",
+    0
+   ],
+   "sigmas": [
+    "12",
+    0
+   ],
+   "latent_image": [
+    "9",
+    0
+   ]
+  }
+ },
+ "15": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "14",
+    0
+   ],
+   "vae": [
+    "2",
+    0
+   ]
+  }
+ },
+ "16": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "15",
+    0
+   ],
+   "filename_prefix": "kit/image"
+  }
+ }
+}
