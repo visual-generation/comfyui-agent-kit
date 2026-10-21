@@ -3,18 +3,27 @@
   "class_type": "LoadImage",
   "inputs": {
    "image": "input.png"
+  },
+  "_meta": {
+   "title": "最初のコマ"
   }
  },
  "2": {
   "class_type": "RandomNoise",
   "inputs": {
    "noise_seed": 42
+  },
+  "_meta": {
+   "title": "シード"
   }
  },
  "3": {
   "class_type": "RandomNoise",
   "inputs": {
    "noise_seed": 42
+  },
+  "_meta": {
+   "title": "シード（仕上げ）"
   }
  },
  "4": {
@@ -45,6 +54,9 @@
   "class_type": "PrimitiveInt",
   "inputs": {
    "value": 720
+  },
+  "_meta": {
+   "title": "高さ"
   }
  },
  "9": {
@@ -61,6 +73,9 @@
   "class_type": "PrimitiveInt",
   "inputs": {
    "value": 25
+  },
+  "_meta": {
+   "title": "1秒のコマ数"
   }
  },
  "11": {
@@ -89,6 +104,9 @@
   "class_type": "PrimitiveInt",
   "inputs": {
    "value": 1280
+  },
+  "_meta": {
+   "title": "幅"
   }
  },
  "15": {
@@ -153,6 +171,9 @@
     "19",
     0
    ]
+  },
+  "_meta": {
+   "title": "動きの説明"
   }
  },
  "21": {
@@ -163,6 +184,9 @@
     "19",
     0
    ]
+  },
+  "_meta": {
+   "title": "避けたいこと"
   }
  },
  "22": {
@@ -225,6 +249,9 @@
   "class_type": "PrimitiveInt",
   "inputs": {
    "value": 121
+  },
+  "_meta": {
+   "title": "コマ数"
   }
  },
  "27": {
@@ -505,6 +532,9 @@
     "42",
     0
    ]
+  },
+  "_meta": {
+   "title": "動画を保存"
   }
  }
 }

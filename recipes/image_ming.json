@@ -4,12 +4,18 @@
   "inputs": {
    "unet_name": "ming_image_0.1_design_int8_convrot.safetensors",
    "weight_dtype": "default"
+  },
+  "_meta": {
+   "title": "モデル本体を読む"
   }
  },
  "2": {
   "class_type": "VAELoader",
   "inputs": {
    "vae_name": "ming_image_vae_bf16.safetensors"
+  },
+  "_meta": {
+   "title": "色をつける部品"
   }
  },
  "3": {
@@ -24,12 +30,18 @@
    "clip_name": "ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors",
    "type": "qwen_image",
    "device": "default"
+  },
+  "_meta": {
+   "title": "文章を読む部品"
   }
  },
  "5": {
   "class_type": "RandomNoise",
   "inputs": {
    "noise_seed": 42
+  },
+  "_meta": {
+   "title": "シード"
   }
  },
  "6": {
@@ -40,18 +52,27 @@
     "4",
     0
    ]
+  },
+  "_meta": {
+   "title": "作りたい画像"
   }
  },
  "7": {
   "class_type": "PrimitiveInt",
   "inputs": {
    "value": 1216
+  },
+  "_meta": {
+   "title": "幅"
   }
  },
  "8": {
   "class_type": "PrimitiveInt",
   "inputs": {
    "value": 832
+  },
+  "_meta": {
+   "title": "高さ"
   }
  },
  "9": {
@@ -107,6 +128,9 @@
     "11",
     0
    ]
+  },
+  "_meta": {
+   "title": "ステップ"
   }
  },
  "13": {
@@ -168,6 +192,9 @@
     0
    ],
    "filename_prefix": "kit/image"
+  },
+  "_meta": {
+   "title": "画像を保存"
   }
  }
 }

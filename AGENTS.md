@@ -59,7 +59,7 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 
 ### レシピを足すとき
 
-ComfyUI のテンプレートを開き、「ファイル → エクスポート (API)」で保存して `recipes/` に置く。画面用の形（`nodes` と `links` がある）は使えない。6章の表に、差し替えるノード番号と必要なファイルを書き足す。
+新しいモデルや作業は、ComfyUI の公式テンプレート（開発元が用意し、版に合わせて手入れしているレシピ集）から始め、必要な所だけ変える。一から組むより間違いが少ない。テンプレートには有料APIの箱（一覧で `API` の札）や、初期状態では使わない大きな部品が入っていることがあるので、点検（`--check-only`）で確かめる。ComfyUI のテンプレートを開き、「ファイル → エクスポート (API)」で保存して `recipes/` に置く。画面用の形（`nodes` と `links` がある）は使えない。6章の表に、差し替えるノード番号と必要なファイルを書き足す。
 
 ## 4. 作品の進め方
 
@@ -76,7 +76,8 @@ ComfyUI のテンプレートを開き、「ファイル → エクスポート 
    - 利用者に言われていない案を一つ、「エージェントからの提案」と分けて添えてよい。
 6. **直す**：利用者が表の行を指して直したい所を言うか、並んだ絵から選ぶ。言われた所だけ変えて作り直す。
 7. **記録する**：試すたびに `記録.md` へ、変える前に「確かめたいこと・変えるもの・残すもの・たぶんこうなる」、変えた後に「結果・見て思ったこと・まだ分からないこと・次にすること」を書く。予想は後から書き換えない。
-8. **再開する**：`要望.md` と `記録.md` の最後を読み、`runs/` に未完了の記録が無いか確かめてから始める。
+8. **画面で確かめてもらう**：できた画像のファイルを ComfyUI の画面へ放り込むと、送ったレシピが箱と線で開く（画像に埋め込まれている）。利用者が「何をどう設定したか」を自分の目で確かめたいときは、そのファイルを示す。
+9. **再開する**：`要望.md` と `記録.md` の最後を読み、`runs/` に未完了の記録が無いか確かめてから始める。
 
 - 作品の名前は半角英数字にする（例 `works/apple`）。`--note` は1回ごとの記録（runs）に残る短いメモで、`記録.md` には別に書く。
 - 絵を見られないエージェントは、ゴールを「判断できない」として、ファイルの場所を示して利用者に見てもらう。絵をチャットに載せられないときは、ファイルの場所を示す。
@@ -159,9 +160,11 @@ ComfyUI のテンプレートを開き、「ファイル → エクスポート 
 | `image_ming.json` | 文章から画像 | 6 注文、5 シード、12 歩数、7 幅、8 高さ | `diffusion_models/ming_image_0.1_design_int8_convrot.safetensors`（6.2GB）、`text_encoders/ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors`（19.5GB）、`vae/ming_image_vae_bf16.safetensors`（0.25GB）／huggingface.co/Comfy-Org/Ming-Image | MIT |
 | `edit_qwen.json` | 言葉で直す | 1 元の画像、11 直したいこと、9 避けたいこと、13 シード・歩数 | `diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors`（20.5GB／huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI）、`text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors`（9.4GB）と `vae/qwen_image_vae.safetensors`（0.25GB）／huggingface.co/Comfy-Org/Qwen-Image_ComfyUI | Apache 2.0 |
 | `edit_qwen_masked.json` | 塗った所だけ直す | 上に加えて 16 マスク | edit_qwen と同じ | Apache 2.0 |
+| `edit_qwen_masked_fast.json` | 塗った所だけ直す（速い版） | 上と同じ。4歩・cfg 1 | 上に加えて `loras/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors`（0.85GB／huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning） | Apache 2.0 |
 | `video_ltx23.json` | 画像から動画（音つき） | 1 最初のコマ、20 動きの説明、21 避けたいこと、14 幅、8 高さ、26 コマ数、10 毎秒コマ、2・3 シード | `checkpoints/ltx-2.3-22b-dev-fp8.safetensors`（29.1GB／huggingface.co/Lightricks/LTX-2.3-fp8）、`text_encoders/gemma_3_12B_it_fp4_mixed.safetensors`（9.4GB／huggingface.co/Comfy-Org/ltx-2）、`latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors`（1.0GB／huggingface.co/Lightricks/LTX-2.3）、`loras/ltx_2.3_22b_distilled_1.1_lora_dynamic_fro09_avg_rank_111_bf16.safetensors`（2.7GB／huggingface.co/Comfy-Org/ltx-2.3） | LTX-2 Community License：年間売上1,000万USD以上の事業者は有償契約が必要。使う前に利用者に条件を示す |
 
 - LTX のコマ数は 8の倍数＋1 に切り下げられる（121 で約4.8秒）。720 を指定すると 704 で出ることがある。
+- 速い版（Lightning：少ない歩数で仕上げるための追加部品）は、同じ直しで 40歩 約5分 → 4歩 約43秒だった。色や細部は少し変わる（青がやや濃く、水玉が少なめ）。試しを何回も回すときは速い版、仕上げは通常版、と使い分けられる。
 - 12GB の GPU（RTX 4070）での時間：Ming 1216×832・12歩 約20秒、Qwen-Image-Edit 40歩 約10分（メモリに収まらない分をCPU側で扱うため遅い）、LTX-2.3 1280×704・121コマ 約2分。
 - ファイル名・大きさ・入手先は 2026-10-21 時点。
 
