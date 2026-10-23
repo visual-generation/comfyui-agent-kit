@@ -294,6 +294,14 @@ def cmd_check(args):
 
 # ---- 環境・箱・モデル --------------------------------------------------------
 
+def readable_dir(path: str | Path) -> bool:
+    """読む権限が無い場所（作業場を制限されたエージェントなど）は、無いものとして扱う。"""
+    try:
+        return Path(path).is_dir()
+    except OSError:
+        return False
+
+
 def disk_free(path: str | Path) -> str:
     try:
         import shutil
@@ -342,7 +350,7 @@ def cmd_env(args):
                     print(f"ComfyUI の{label}: {env[key]}（空き {disk_free(env[key])}）")
             folders = try_fetch(base + "/api/experiment/models", timeout=10) or []
             model_dirs = next((f.get("folders") for f in folders if f.get("name") == "diffusion_models"), None)
-            model_dirs = [d for d in model_dirs or [] if Path(d).is_dir()]
+            model_dirs = [d for d in model_dirs or [] if readable_dir(d)]
             if model_dirs:
                 env["model_dirs"] = model_dirs
                 env["model_disk_free"] = disk_free(model_dirs[0])
