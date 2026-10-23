@@ -2,3 +2,4 @@ works/*/runs/
 works/*/outputs/
 !works/_template/
 __pycache__/
+.cache/
