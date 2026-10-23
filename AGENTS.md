@@ -6,9 +6,9 @@
 
 ## 1. 何より先に守ること
 
-- **お金**：有料のサービス、GPUの借り出し、購入、ComfyUI の有料APIの箱（`api_node`）は、利用者が明示した範囲でだけ使う。範囲が無ければ使わない。
+- **お金**：有料のサービス、購入、ComfyUI の有料APIの箱（`api_node`）は、利用者が明示した範囲でだけ使う。範囲が無ければ使わない。
 - **削除・安全・導入**：ファイルの削除、OSやセキュリティの設定変更、ソフトやパッケージのPC全体への導入はしない。必要なら理由と手順を書いて利用者に頼む。
-- **送ったか分からない実行は送り直さない**：二重に動かすと時間と（借りたGPUなら）お金が二重にかかる。`--recover` で結果を確かめる。
+- **送ったか分からない実行は送り直さない**：二重に動かすと時間と（Comfy Cloud ならクレジットも）二重にかかる。`--recover` で結果を確かめる。
 - **上限で止まる**：作品の `要望.md` の回数・時間の上限に達したら追加の生成をやめ、分かったことと分からないことを報告する。上限が無ければ始める前に聞く。
 - **作るファイルはこのフォルダの中に置く。**
 - **確かめていないことを確かめたと書かない**：「実行できた」と「狙いどおりになった」を分ける。見ていない・測っていないことは「未確認」と書く。
@@ -36,7 +36,7 @@ ComfyUI へレシピを送り、終わるのを待ち、できたファイルを
 python tools/comfy_run.py recipes/image_ming.json --work works/<作品名> --set 6.text="<注文>" --set 5.noise_seed=42 --note "<何を変えたか>"
 python tools/comfy_run.py recipes/edit_qwen.json --work works/<作品名> --image 1=<元の画像> --set 11.prompt="<直したいこと>"
 python tools/comfy_run.py recipes/edit_qwen_masked.json --work works/<作品名> --image 1=<元の画像> --image 16=<マスク> --set 11.prompt="<直したいこと>"
-python tools/comfy_run.py recipes/video_ltx23.json --work works/<作品名> --image 1=<最初のコマ> --set 20.text="<動きの説明>"
+python tools/comfy_run.py recipes/video_minimax_h3.json --work works/<作品名> --image 1=<最初のコマ> --set 8.prompt="<動きと音の説明>"
 python tools/comfy_run.py --work works/<作品名> --recover works/<作品名>/runs/<記録>.json
 ```
 
@@ -105,9 +105,10 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 ### 動画
 
 - 先に静止画で主な場面（主役・構図・光）を作り、利用者と決めてから動かす。動画は1回の生成に時間がかかり、構図をあとから直しにくい。
-- 静止画は動画の縦横比（video_ltx23 は 16:9、1280×720）で作る。違うと上下か左右が切れる。
+- 静止画は動画の縦横比（video_minimax_h3 は 16:9、1344×768）で作る。違うと上下か左右が切れる。
 - テンプレートから書き出したレシピには見本の文が入っている。頼みに合わせて書き換える。大きさ・長さは勝手に縮めない。
 - 見せるときは最初・途中・最後のコマを並べる。エージェントは音を聞けないので、音は「未確認」とし、利用者に再生してもらう。
+- MiniMax H3 は動きの説明と一緒に音も作る。どんな音か（近さ・大きさ・音楽や声の有無）も文に書く。
 - 「ゆっくり」と書いても光が大きく変わることがある。直すときは動きの文のうち一つの要素だけ変える。
 
 ### 比べる・測る
@@ -130,6 +131,7 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 |---|---|---|
 | Ming-Image-0.1-Design | 英語・中国語 | モデルカードに記載なし。そろえた比べで英語3枚・中国語3枚とも注文どおり、日本語1枚は形・構図が外れ表面に文字が出た |
 | Qwen-Image-Edit-2511 | 英語・中国語 | モデルカードの言語欄が en・zh。英語・中国語の指示でどちらも注文どおり（各1回） |
+| MiniMax H3 | 英語 | モデルカードに注文の言語の記載なし（話す声は11言語に対応と記載）。公式テンプレートの文が英語 |
 | LTX-2.3 | 英語 | モデルカード本文「Language(s): English」 |
 | HiDream-O1-Image | 英語 | 開発元の使用例が、利用者の文を英語に書き直してから渡す |
 | Z-Image Turbo | 英語 | モデルカードの言語欄が en（説明に英語・中国語の文字の描画） |
@@ -157,16 +159,19 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 
 | レシピ | 方式 | 差し替える主なノード | 必要なファイル（棚／入手先） | 利用条件 |
 |---|---|---|---|---|
-| `image_ming.json` | 文章から画像 | 6 注文、5 シード、12 歩数、7 幅、8 高さ | `diffusion_models/ming_image_0.1_design_int8_convrot.safetensors`（6.2GB）、`text_encoders/ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors`（19.5GB）、`vae/ming_image_vae_bf16.safetensors`（0.25GB）／huggingface.co/Comfy-Org/Ming-Image | MIT |
+| `image_ming.json` | 文章から画像 | 6.text 注文、5.noise_seed シード、12.steps 歩数、7.value 幅、8.value 高さ | `diffusion_models/ming_image_0.1_design_int8_convrot.safetensors`（6.2GB）、`text_encoders/ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors`（19.5GB）、`vae/ming_image_vae_bf16.safetensors`（0.25GB）／huggingface.co/Comfy-Org/Ming-Image | MIT |
 | `edit_qwen.json` | 言葉で直す | 1 元の画像、11 直したいこと、9 避けたいこと、13 シード・歩数 | `diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors`（20.5GB／huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI）、`text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors`（9.4GB）と `vae/qwen_image_vae.safetensors`（0.25GB）／huggingface.co/Comfy-Org/Qwen-Image_ComfyUI | Apache 2.0 |
 | `edit_qwen_masked.json` | 塗った所だけ直す | 上に加えて 16 マスク | edit_qwen と同じ | Apache 2.0 |
 | `edit_qwen_masked_fast.json` | 塗った所だけ直す（速い版） | 上と同じ。4歩・cfg 1 | 上に加えて `loras/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors`（0.85GB／huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning） | Apache 2.0 |
-| `video_ltx23.json` | 画像から動画（音つき） | 1 最初のコマ、20 動きの説明、21 避けたいこと、14 幅、8 高さ、26 コマ数、10 毎秒コマ、2・3 シード | `checkpoints/ltx-2.3-22b-dev-fp8.safetensors`（29.1GB／huggingface.co/Lightricks/LTX-2.3-fp8）、`text_encoders/gemma_3_12B_it_fp4_mixed.safetensors`（9.4GB／huggingface.co/Comfy-Org/ltx-2）、`latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors`（1.0GB／huggingface.co/Lightricks/LTX-2.3）、`loras/ltx_2.3_22b_distilled_1.1_lora_dynamic_fro09_avg_rank_111_bf16.safetensors`（2.7GB／huggingface.co/Comfy-Org/ltx-2.3） | LTX-2 Community License：年間売上1,000万USD以上の事業者は有償契約が必要。使う前に利用者に条件を示す |
+| `video_minimax_h3.json` | 画像から動画（音つき） | 1 最初のコマ、8 動きと音の説明・幅・高さ・コマ数、2 最初のコマを合わせる幅・高さ（8と同じ値にする）、9 シード、11 歩数（20） | `diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors`（21.0GB）、`text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors`（15.7GB）、`vae/minimax_h3_video_vae_int8_convrot.safetensors`（2.8GB）、`vae/minimax_h3_audio_vae_fp32.safetensors`（0.6GB）／huggingface.co/Comfy-Org/MiniMax-H3 | MiniMax H3 Community License：米国・EU・英国・韓国では、モデルも作った動画も使えない（V.4）。年商2,000万USD超は事前の許可（IV.1）。商用の製品・サービスでは画面に「MiniMax H3」を表示（IV.2）。人目に触れる場所では機械が作ったと明示（付表A）。使う前に利用者に条件を示す |
+| `video_minimax_h3_fast.json` | 画像から動画（速い版） | 上と同じ。8歩、Turbo の部品つき | 上に加えて `loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors`（2.0GB／huggingface.co/lightx2v/Minimax-h3-Turbo） | 上と同じ |
+| `video_ltx23.json` | 画像から動画（音つき、軽い別案） | 1 最初のコマ、20 動きの説明、21 避けたいこと、14 幅、8 高さ、26 コマ数、10 毎秒コマ、2・3 シード | `checkpoints/ltx-2.3-22b-dev-fp8.safetensors`（29.1GB／huggingface.co/Lightricks/LTX-2.3-fp8）、`text_encoders/gemma_3_12B_it_fp4_mixed.safetensors`（9.4GB／huggingface.co/Comfy-Org/ltx-2）、`latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors`（1.0GB／huggingface.co/Lightricks/LTX-2.3）、`loras/ltx_2.3_22b_distilled_1.1_lora_dynamic_fro09_avg_rank_111_bf16.safetensors`（2.7GB／huggingface.co/Comfy-Org/ltx-2.3） | LTX-2 Community License：年間売上1,000万USD以上の事業者は有償契約が必要。使う前に利用者に条件を示す |
 
+- MiniMax H3 のコマ数は 17の倍数＋5（124 で約5.2秒、毎秒24コマ）。大きさは短い辺768まで（16:9 は 1344×768）。
 - LTX のコマ数は 8の倍数＋1 に切り下げられる（121 で約4.8秒）。720 を指定すると 704 で出ることがある。
 - 速い版（Lightning：少ない歩数で仕上げるための追加部品）は、同じ直しで 40歩 約5分 → 4歩 約43秒だった。色や細部は少し変わる（青がやや濃く、水玉が少なめ）。試しを何回も回すときは速い版、仕上げは通常版、と使い分けられる。
-- 12GB の GPU（RTX 4070）での時間：Ming 1216×832・12歩 約20秒、Qwen-Image-Edit 40歩 約10分（メモリに収まらない分をCPU側で扱うため遅い）、LTX-2.3 1280×704・121コマ 約2分。
-- ファイル名・大きさ・入手先は 2026-10-21 時点。
+- 12GB の GPU（RTX 4070）での時間：Ming 1216×832・12歩 約20秒、Qwen-Image-Edit 40歩 約10分（メモリに収まらない分をCPU側で扱うため遅い）、MiniMax H3 1344×768・124コマ 20歩 約20分／速い版 8歩 約15分（パソコンのメモリ32GB）、LTX-2.3 1280×704・121コマ 約2分。MiniMax H3 の速い版と通常版は、同じ条件で見た目の差が小さかった。
+- ファイル名・大きさ・入手先は 2026-10-22 時点。
 
 ## 7. モデルの選び方
 
@@ -177,13 +182,13 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 3. **控えが古い、または区分が合わないとき**：次のページだけを読み、控えを書き直す（日付も更新）。広く検索しない。
    - 文章から画像：`https://artificialanalysis.ai/image/leaderboard/text-to-image?open-weights=true`（区分は `&category=` で選ぶ）
    - 編集：`https://artificialanalysis.ai/image/leaderboard/editing/open-weights`
-   - 画像から動画：`https://artificialanalysis.ai/video/leaderboard/image-to-video?audio-output=false&models=all`
+   - 画像から動画：`https://artificialanalysis.ai/video/leaderboard/image-to-video`（音つきの表。音なしの表は同じページのFAQにある）
 4. **読み方**：点数は人が2枚を見比べた投票によるもので、±の幅（95%区間）が付く。幅が重なる差は優劣と扱わない。表は開発元の構成での評価で、手元の軽量版やテンプレートの設定とは同じでない。
 5. **利用条件とPCを確かめる**：Hugging Face の `https://huggingface.co/api/models/<配布者>/<名前>` の `cardData.license`。`mit`・`apache-2.0` は商用可。`nc` を含むもの・`research` は商用不可。`other` や売上・地域の条件付きは、条件を示して利用者に決めてもらう。ファイルの合計の大きさ、GPUのメモリ、ComfyUI のテンプレートの有無も見る。最後に1回だけ動かして時間と結果を確かめる。
 6. **ダウンロードが要るなら、大きさと入手先を示して利用者に聞く。** 手元にあるかは、そのモデルのレシピで `--check-only` を実行して確かめる（終了コード7なら無い）。このキットにレシピが無いモデルは、ComfyUI のテンプレートからレシピを作ってから比べる。最初の1回の試しは、本番の1回目を兼ねてよい。
 7. **選んだ理由を `要望.md` に残す**：採ったモデル、比べた候補と点数、採らなかった理由、未確認のこと、見直す条件。
 
-### 候補の控え（2026-10-21、Artificial Analysis、公開重み）
+### 候補の控え（画像 2026-10-21、動画 2026-10-22、Artificial Analysis、公開重み）
 
 | 方式 | 候補（点数 ±幅） | 利用条件 | メモ |
 |---|---|---|---|
@@ -192,7 +197,7 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 | 　光 | Z-Image 967±30、HiDream-O1 960±27、Ming 942±22 | | 区間は重なる |
 | 　質感 | HiDream-O1 991±27、Ming 955±23、Z-Image 947±30 | | 区間は重なる |
 | 編集 | Qwen-Image-Edit-2511 991±18、HiDream-O1-Image 956±14、FLUX.2 [klein] 4B 937±17 | Apache 2.0、MIT、Apache 2.0 | 上位の Qwen-Image-2.1 は研究用、FLUX.2 [dev]・klein 9B は非商用、HunyuanImage 3.0 Instruct は大きすぎる。Fibo 2.0 は利用条件を未確認 |
-| 画像から動画（音なし） | LTX-2.3 Pro 1157±10 / Fast 1150±10、Wan 2.2 A14B 1107±10、Wan 2.2 5B 992±12 | LTX は条件付き、Wan は Apache 2.0 | LTX の値は開発元のAPI構成 |
+| 画像から動画（音つき、2026-10-22） | MiniMax H3 (768p) 1140±16（全体1位）、MAGI-2 Preview 1046、LTX-2.5 Fast 984、LTX-2.3 Pro 903±18 | H3 は地域・売上・表示の条件付き、LTX は売上の条件付き | 音なしの表（FAQ、幅なし）でも公開重みの1位は MiniMax H3 1356。MAGI-2・LTX-2.5 は ComfyUI での動かし方を未確認 |
 
 ## 8. ComfyUI の API の要点
 
@@ -215,23 +220,14 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 
 macOS での動作は、このキットの作成時には試していない。道具は標準ライブラリだけで、パスの扱いは OS に依存しない書き方にしてある。
 
-## 10. 自分のPCで動かさない場合
+## 10. 自分のPCで動かさない場合（Comfy Cloud）
 
-このキットの道具は、自分のPCの中（127.0.0.1）で動いている ComfyUI だけにつなぐ。PCにGPUが無いときは、次のどちらかで同じ進め方（4章）を使う。どちらもお金がかかるので、1章のとおり、使う前に利用者に上限額を決めてもらう。以下は公式資料（2026-10-21）にもとづく手順で、このキットの作成時には試していない。
-
-### GPU を時間で借りる（RunPod など）
-
-1. 利用者に、借りるサービス・GPU・1時間あたりの料金・使う時間の上限を決めてもらう。借りる操作と、使い終わったあとの停止・削除は利用者がする（停止しないと料金がかかり続ける）。
-2. 借りたマシンで ComfyUI を起動する（各サービスの ComfyUI 用テンプレートなど）。
-3. 6章のモデルを、借りたマシンの `models/` の各フォルダへダウンロードする（大きさを示して利用者に聞く）。
-4. 自分のPCから SSH でポートをつなぐ：`ssh -L 8188:127.0.0.1:8188 <ユーザー>@<接続先> -p <ポート>`。これで借りたマシンの ComfyUI が、自分のPCの 127.0.0.1:8188 として見え、`tools/comfy_run.py` がそのまま使える。
-5. できたファイルは道具が自分のPCの `works/` に保存する。借りたマシンを削除すると、マシンの中のファイルは消える。
-
-### Comfy Cloud
+このキットの道具は、自分のPCの中（127.0.0.1）で動いている ComfyUI だけにつなぐ。PCにGPUが無いときは Comfy Cloud で同じ進め方（4章）を使う。お金がかかるので、1章のとおり、使う前に利用者に上限額を決めてもらう。以下は公式資料（2026-10-23）にもとづく手順で、このキットの作成時には試していない。
 
 - 画面用のレシピ（.json）は、Comfy Cloud の画面でも開ける。必要なモデルが Cloud に無い場合は、同じモデルの公式テンプレートから開く。
 - エージェントから使うときは、Comfy Cloud の MCP サーバー（`https://cloud.comfy.org/mcp`）につなぐ。この場合 `tools/comfy_run.py` は使わず、MCP の道具で実行する。4章の進め方（ゴール、日本語の表、一度に一つ、記録、上限）はそのまま守る。
   - Claude Code：`claude mcp add --transport http comfy-cloud https://cloud.comfy.org/mcp`（ブラウザでサインイン）
   - Codex：`codex mcp add comfy-cloud --url https://cloud.comfy.org/mcp` のあと `codex mcp login comfy-cloud`
+- 自分で選んだモデルを持ち込めるのは Creator 以上のプラン。Ming-Image は Comfy の対応モデル一覧に見つからなかった（2026-10-23）。Qwen-Image-Edit-2511 は一覧にある。MiniMax H3 は Cloud では有料の箱（Partner Nodes）として使える（768P で動画1秒あたり 27.16 クレジット）。
 - 実行ごとにプランのクレジットが減る。利用者が決めた上限（回数かクレジット）で止まる。
 - API キーを使う場合は、キーを文書やGitに書かない（環境変数に置く）。

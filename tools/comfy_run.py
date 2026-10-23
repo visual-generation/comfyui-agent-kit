@@ -82,6 +82,9 @@ def apply_sets(graph: dict, sets: list[str]) -> None:
         node, _, field = key.partition(".")
         if node not in graph or not field:
             raise Stop(f"差し替え先が見つかりません: {item}", 2)
+        if field not in graph[node]["inputs"]:
+            names = ", ".join(graph[node]["inputs"])
+            raise Stop(f"ノード {node} に欄 {field} がありません（あるのは {names}）: {item}", 2)
         try:
             value = json.loads(raw)
         except json.JSONDecodeError:
