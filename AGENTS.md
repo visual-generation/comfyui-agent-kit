@@ -213,12 +213,26 @@ python tools/make_mask.py --like <元の画像.png> --ellipse 0.36,0.32,0.72,0.7
 
 | | Windows | macOS |
 |---|---|---|
-| Python の起動 | `python`（入っていなければ Microsoft Store への案内が出ることがある） | `python3` |
+| Python の起動 | `python`（入っていなければ Microsoft Store への案内が出ることがある） | `python3`（初回に Command Line Tools の導入を聞かれることがある。導入は利用者が決める） |
 | パス | `\`（道具は `/` でも動く） | `/` |
 | ComfyUI | Comfy Desktop（NVIDIA・AMD・Intel Arc の GPU。無ければ CPU で遅い） | Comfy Desktop（Apple シリコン M1 以降、macOS 13 以降） |
 | 日本語の表示 | 道具は UTF-8 で出力する。ほかの命令で文字化けしたら `PYTHONUTF8=1` | 通常そのまま |
 
 macOS での動作は、このキットの作成時には試していない。道具は標準ライブラリだけで、パスの扱いは OS に依存しない書き方にしてある。
+
+### macOS でモデルを動かすとき（2026-10-23、公式資料と利用者の報告による。未検証）
+
+Mac の GPU（PyTorch の MPS）は、軽くした重みの形式の一部に対応していない。`--check-only` はファイルの有無までしか確かめず、形式が Mac で動くかは分からない。
+
+- **fp8 の重み**（ファイル名に `fp8`、`fp8mixed`、`fp8_scaled` を含むもの）は避ける。ComfyUI で `Float8_e4m3fn` の型エラーになる報告が続いている。bf16 版か GGUF 版（拡張機能 ComfyUI-GGUF が要る。入れるかは利用者が決める）に替える。
+- **int8_convrot の重み**は、ComfyUI 0.35.0 以降なら元の精度に戻して計算するため読み込めるが、速くはならず、戻すときにメモリが足りなくなる報告がある。
+- このキットのレシピの様子：
+  - `image_ming.json`：Mac で動かした報告は見つからない。重みの合計は約26GB。
+  - `edit_qwen*.json`：本体 `qwen_image_edit_2511_fp8mixed` と文字読み `qwen_2.5_vl_7b_fp8_scaled` が fp8。Mac では本体を `qwen_image_edit_2511_bf16`（40.9GB）か `int8_convrot`（20.5GB）、文字読みを `qwen_2.5_vl_7b.safetensors`（bf16、16.6GB）に替える（すべて Comfy-Org の配布）。
+  - `video_minimax_h3*.json`：素の ComfyUI では動いた報告がない。追加の拡張機能で動いた報告では、5〜7秒の動画1本に20分〜1時間半。
+- 最初の1回は小さい大きさで動かし、エラーとメモリの使い方を確かめてから本番の大きさにする。
+- 画像・動画とも重いときは、利用者に Comfy Cloud（10章）か、ローカルの ComfyUI から Comfy の GPU を秒課金で使う Comfy Cloud ノード（有料の箱。使う前に利用者の許可と上限）を示す。
+- Mac まわりの不具合は修正が速い。使う時点の ComfyUI の版と、該当する不具合の報告を確かめてから進める。
 
 ## 10. 自分のPCで動かさない場合（Comfy Cloud）
 
