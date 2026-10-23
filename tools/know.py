@@ -34,6 +34,8 @@ for stream in (sys.stdout, sys.stderr):
 
 KIT = Path(__file__).resolve().parent.parent
 CACHE = KIT / ".cache"
+ME = KIT / "me"  # この利用者のもの（Git に入れない）
+USER_DECIDED = ("works_dir", "notes")  # 利用者が決めて書き足す欄。--save で上書きしない
 RAW = "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/main/templates"
 CLOUD = "https://cloud.comfy.org"
 RELEASES = "https://api.comfy.org/releases?project=comfyui"
@@ -292,32 +294,65 @@ def cmd_check(args):
 
 # ---- 環境・箱・モデル --------------------------------------------------------
 
+def disk_free(path: str | Path) -> str:
+    try:
+        import shutil
+        return gb(shutil.disk_usage(path).free)
+    except Exception:
+        return "?"
+
+
 def cmd_env(args):
+    env: dict = {"checked": dt.datetime.now().isoformat(timespec="minutes"), "where": "cloud" if args.cloud else "local"}
     latest = try_fetch(RELEASES, timeout=15)
     newest = latest[0] if isinstance(latest, list) and latest else {}
     if newest:
+        env["comfyui_latest"] = newest.get("version")
         print(f"ComfyUI の最新版: {newest.get('version')}（{(newest.get('published_at') or '')[:10]}、api.comfy.org）")
     index, taken = remote_index(args.refresh)
     print(f"公式テンプレート: {len(flat(index))} 件（{taken} 取得）")
+    env["kit_disk_free"] = disk_free(KIT)
+    print(f"このフォルダのドライブの空き: {env['kit_disk_free']}")
     if args.cloud:
         folders = try_fetch(f"{CLOUD}/api/experiment/models", timeout=15)
         print(f"Comfy Cloud: モデルの棚 {len(folders) if folders else '?'} 個を公開一覧から確認。実行には有料プランが要る。")
-        return
-    base = find_server(args.server)
-    if not base:
-        print("自分のパソコンで動いている ComfyUI: 見つからない（起動するか、Comfy Cloud を使う）")
-        return
-    stats = try_fetch(base + "/system_stats") or {}
-    s = stats.get("system", {})
-    print(f"手元の ComfyUI: {s.get('comfyui_version')}（{base}）、OS {s.get('os')}、Python {str(s.get('python_version', '')).split()[0]}")
-    print(f"パソコンのメモリ: {gb(s.get('ram_total'))}")
-    for d in stats.get("devices", []):
-        print(f"GPU: {d.get('name')}（種類 {d.get('type')}、メモリ {gb(d.get('vram_total'))}）")
-    if any(d.get("type") == "mps" for d in stats.get("devices", [])):
-        print("→ Mac の GPU（MPS）。テンプレートを使う前に `check` と `issues` で、Mac で動くかを確かめる。")
-    names, _ = local_template_info(base)
-    if names is not None:
-        print(f"手元のテンプレート: {len(names)} 件（最新の一覧との差 {len(flat(index)) - len(names)} 件）")
+    else:
+        base = find_server(args.server)
+        if not base:
+            env["where"] = "none"
+            print("自分のパソコンで動いている ComfyUI: 見つからない（起動するか、Comfy Cloud を使う）")
+        else:
+            stats = try_fetch(base + "/system_stats") or {}
+            s = stats.get("system", {})
+            devices = [{"name": d.get("name"), "type": d.get("type"), "vram": gb(d.get("vram_total"))}
+                       for d in stats.get("devices", [])]
+            env.update({"server": base, "comfyui": s.get("comfyui_version"), "os": s.get("os"),
+                        "ram": gb(s.get("ram_total")), "devices": devices})
+            print(f"手元の ComfyUI: {s.get('comfyui_version')}（{base}）、OS {s.get('os')}、"
+                  f"Python {str(s.get('python_version', '')).split()[0]}")
+            print(f"パソコンのメモリ: {env['ram']}")
+            for d in devices:
+                print(f"GPU: {d['name']}（種類 {d['type']}、メモリ {d['vram']}）")
+            if any(d["type"] == "mps" for d in devices):
+                print("→ Mac の GPU（MPS）。テンプレートを使う前に `check` と `issues` で、Mac で動くかを確かめる。")
+            folders = try_fetch(base + "/api/experiment/models", timeout=10) or []
+            model_dirs = next((f.get("folders") for f in folders if f.get("name") == "diffusion_models"), None)
+            model_dirs = [d for d in model_dirs or [] if Path(d).is_dir()]
+            if model_dirs:
+                env["model_dirs"] = model_dirs
+                env["model_disk_free"] = disk_free(model_dirs[0])
+                print(f"モデルの棚（diffusion_models）: {', '.join(model_dirs)}（空き {env['model_disk_free']}）")
+            names, _ = local_template_info(base)
+            if names is not None:
+                env["templates_local"] = len(names)
+                print(f"手元のテンプレート: {len(names)} 件（最新の一覧との差 {len(flat(index)) - len(names)} 件）")
+    if args.save:
+        ME.mkdir(exist_ok=True)
+        path = ME / "環境.json"
+        old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        kept = {k: v for k, v in old.items() if k in USER_DECIDED}
+        path.write_text(json.dumps({**env, **kept}, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"\n{path.relative_to(KIT)} に書いた（利用者が決めた {', '.join(kept) or 'なし'} はそのまま）")
 
 
 def cmd_node(args):
@@ -370,12 +405,48 @@ def cmd_model(args):
         print(f"  {f}  形式: {fmt}")
 
 
+def find_comfy_cli() -> str | None:
+    import shutil
+    for cand in (os.environ.get("COMFY_CLI"), KIT / ".venv" / "Scripts" / "comfy.exe", KIT / ".venv" / "bin" / "comfy"):
+        if cand and Path(cand).is_file():
+            return str(cand)
+    return shutil.which("comfy")
+
+
+def cmd_make(args):
+    """公式テンプレートを取ってきて、comfy_run.py で送れる API 用レシピにする（変換は公式の comfy-cli が行う）。"""
+    import subprocess
+    cli = find_comfy_cli()
+    if not cli:
+        raise Stop("公式の comfy-cli が見つかりません。入れるかは利用者が決める（AGENTS.md 2章）。"
+                   "入れない場合は、ComfyUI の画面でテンプレートを開き「ファイル → エクスポート (API)」で保存する。")
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    ui = out.with_name(out.stem + "_画面用.json")
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    if args.server:
+        env["COMFY_URL"] = args.server
+    step = subprocess.run([cli, "--json", "templates", "fetch", args.name, "-o", str(ui)],
+                          capture_output=True, text=True, encoding="utf-8", env=env)
+    if step.returncode != 0:
+        raise Stop(f"テンプレート {args.name} を取れませんでした: {step.stdout[-400:]}{step.stderr[-400:]}")
+    step = subprocess.run([cli, "--json", "--where", "local", "run", "--workflow", str(ui), "--print-prompt"],
+                          capture_output=True, text=True, encoding="utf-8", env=env)
+    try:
+        prompt = json.loads(step.stdout)["data"]["prompt"]
+    except Exception:
+        raise Stop(f"API 用に変換できませんでした: {step.stdout[-400:]}{step.stderr[-400:]}")
+    out.write_text(json.dumps(prompt, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"{out}（API 用。comfy_run.py で送る）と {ui.name}（画面用。ComfyUI に放り込むと箱と線で開く）を作った。")
+    print(f"変換: {Path(cli).name} {step.stdout and json.loads(step.stdout).get('version', '')}。次に `know.py recipe {out}` で欄を確かめる。")
+
+
 def cmd_recipe(args):
     graph = json.loads(Path(args.path).read_text(encoding="utf-8"))
     if "nodes" in graph and "links" in graph:
         raise Stop("画面用のレシピです。ComfyUI の「ファイル → エクスポート (API)」で保存したものを渡してください。")
     print(f"{args.path} の欄（--set ノード番号.欄=値 で差し替える。線でつながった欄は省く）")
-    for nid, node in sorted(graph.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else 0):
+    for nid, node in sorted(graph.items(), key=lambda kv: [int(x) if x.isdigit() else 0 for x in kv[0].split(":")]):
         values = {k: v for k, v in node.get("inputs", {}).items() if not isinstance(v, list)}
         title = (node.get("_meta") or {}).get("title", "")
         shown = ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)[:60]}" for k, v in values.items())
@@ -460,6 +531,7 @@ def main() -> int:
 
     s = sub.add_parser("env", help="手元（または Cloud）の環境と、最新との差")
     s.add_argument("--cloud", action="store_true")
+    s.add_argument("--save", action="store_true", help="me/環境.json に書く")
     s.set_defaults(func=cmd_env)
 
     s = sub.add_parser("tags", help="公式テンプレートの分類と札の一覧")
@@ -489,6 +561,11 @@ def main() -> int:
     s.add_argument("repo", help="配布者/名前（例 Comfy-Org/SeedVR2）")
     s.add_argument("--limit", type=int, default=30)
     s.set_defaults(func=cmd_model)
+
+    s = sub.add_parser("make", help="公式テンプレートから API 用レシピを作る（comfy-cli を使う）")
+    s.add_argument("name", help="テンプレート名（ways の結果から写す）")
+    s.add_argument("out", help="出力先（例 <作品>/レシピ/upscale.json）")
+    s.set_defaults(func=cmd_make)
 
     s = sub.add_parser("recipe", help="API用レシピの、差し替えられる欄の一覧")
     s.add_argument("path")

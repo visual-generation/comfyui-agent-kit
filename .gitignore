@@ -3,3 +3,5 @@ works/*/outputs/
 !works/_template/
 __pycache__/
 .cache/
+me/
+.venv/
