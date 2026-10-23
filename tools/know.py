@@ -335,6 +335,11 @@ def cmd_env(args):
                 print(f"GPU: {d['name']}（種類 {d['type']}、メモリ {d['vram']}）")
             if any(d["type"] == "mps" for d in devices):
                 print("→ Mac の GPU（MPS）。テンプレートを使う前に `check` と `issues` で、Mac で動くかを確かめる。")
+            argv = s.get("argv") or []
+            for flag, key, label in (("--output-directory", "output_dir", "出力先"), ("--input-directory", "input_dir", "入力先")):
+                if flag in argv and argv.index(flag) + 1 < len(argv):
+                    env[key] = argv[argv.index(flag) + 1]
+                    print(f"ComfyUI の{label}: {env[key]}（空き {disk_free(env[key])}）")
             folders = try_fetch(base + "/api/experiment/models", timeout=10) or []
             model_dirs = next((f.get("folders") for f in folders if f.get("name") == "diffusion_models"), None)
             model_dirs = [d for d in model_dirs or [] if Path(d).is_dir()]
