@@ -1,7 +1,4 @@
-works/*/runs/
-works/*/outputs/
+works/*
 !works/_template/
-__pycache__/
-.cache/
 me/
 .venv/
